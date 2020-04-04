@@ -2,9 +2,8 @@
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using i18n.Domain.Abstract;
 using i18n.Domain.Entities;
 using i18n.Domain.Concrete;
@@ -20,6 +19,8 @@ namespace i18n
         private i18nSettings _settings;
 
         private ITranslationRepository _translationRepository;
+
+        private static Regex unicodeMatchRegex = new Regex(@"\\U(?<Value>[0-9A-F]{4})", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         public TextLocalizer(
             i18nSettings settings,
@@ -125,6 +126,9 @@ namespace i18n
         {
         // Note that there is no need to serialize access to System.Web.HttpRuntime.Cache when just reading from it.
         //
+            if (!langtag.IsSet()) {
+                return false; }
+
             // Default language is always valid.
             if (LocalizedApplication.Current.MessageKeyIsValueInDefaultLanguage
                 && LocalizedApplication.Current.DefaultLanguageTag.Equals(langtag)) {
@@ -172,6 +176,18 @@ namespace i18n
 
             // Lookup specific message text in the language PO and if found...return that.
             string text = LookupText(langtag, msgkey);
+            if (text == null && unicodeMatchRegex.IsMatch(msgkey))
+            {
+                // If message was not found but contains escaped unicode characters, try converting those
+                // to characters and look up the message again
+                var msgkeyClean = unicodeMatchRegex.Replace(msgkey, m =>
+                {
+                    var code = int.Parse(m.Groups["Value"].Value, NumberStyles.HexNumber);
+                    return char.ConvertFromUtf32(code);
+                });
+                text = LookupText(langtag, msgkeyClean);
+            }
+
             if (text != null) {
                 return text; }
 
@@ -200,13 +216,22 @@ namespace i18n
                 Translation t = _translationRepository.GetTranslation(langtag);
 
                 // Cache messages.
-                // NB: if the file changes we want to be able to rebuild the index without recompiling.
-                // NB: it is possible for GetCacheDependencyForSingleLanguage to return null in the
-                // case of the default language where it is added to AppLanguages yet doesn't actually exist.
-                // See MessageKeyIsValueInDefaultLanguage.
-                var cd = _translationRepository.GetCacheDependencyForSingleLanguage(langtag);
-                if (cd != null) {
-                    System.Web.HttpRuntime.Cache.Insert(GetCacheKey(langtag), t.Items, cd); }
+                // · In order to facilitate dynamic refreshing of translations during runtime
+                //   (without restarting the server instance) we first establish something upon 
+                //   which the cache entry will be dependent: that is a 'cache dependency' object
+                //   which essentially triggers an event if/when the entry is to be considered
+                //   as 'dirty' and whihc is listened to by the cache.
+                //   In our case, we want this 'dirty' event to be triggered if/when the
+                //   translation's source PO file is updated.
+                //   NB: it is possible for GetCacheDependencyForSingleLanguage to return null in the
+                //   case of the default language where it is added to AppLanguages yet there 
+                //   doesn't actually exist an underlying PO file. This is perfectly valid when
+                //   LocalizedApplication.MessageKeyIsValueInDefaultLanguage == true (default setting).
+                //   In this case the cache entry is associated with the null CacheDependency instance
+                //   which means the cache entry is effectively permanent for this server instance.
+                System.Web.Caching.CacheDependency cd = _translationRepository.GetCacheDependencyForSingleLanguage(langtag);
+                // · Insert translation into cache associating it with any CacheDependency.
+                System.Web.HttpRuntime.Cache.Insert(GetCacheKey(langtag), t.Items, cd);
             }
             return true;
         }

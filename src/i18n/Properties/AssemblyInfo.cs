@@ -1,10 +1,9 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyVersion("2.1.11")]
-[assembly: AssemblyFileVersion("2.1.11")]
-[assembly: AssemblyInformationalVersion("2.1.11-pre002")] // picked up by nuspec $version$ identifier
+[assembly: AssemblyVersion("2.1.15")]
+[assembly: AssemblyFileVersion("2.1.15")]
+[assembly: AssemblyInformationalVersion("2.1.15")] // picked up by nuspec $version$ identifier
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
@@ -14,7 +13,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Martin Connell,Daniel Crenna,contributors")] // picked up by nuspec $author$ identifier
 [assembly: AssemblyProduct("i18n")]
-[assembly: AssemblyCopyright("Copyright (c) 2011-2017 Martin Connell, Daniel Crenna, and contributors.")]
+[assembly: AssemblyCopyright("Copyright (c) 2011-2019 Martin Connell, Daniel Crenna, and contributors.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

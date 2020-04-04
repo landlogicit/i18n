@@ -399,6 +399,8 @@ Note: Refer to
 [Issue #163](https://github.com/turquoiseowl/i18n/issues/163#issuecomment-68811808) 
 for more on IIS compression settings.
 
+Note: in some scenarios, it might be desirable to localize Javascipt (.js) files, making your application case 1. To easily disable static file compression, use the IIS manager and click on site name, Compression and uncheck "Enable static content compression".
+
 Note: The Microsoft ScriptManager compresses responses to requests for ScriptResource.axd so these responses will always be 
 compressed and the script that is returned by the ScriptManager will not be localized even if you disable static file compression. 
 
@@ -409,6 +411,11 @@ adding `i18n.PostBuild.exe` as a project reference:
 
 ```
     "$(TargetDir)i18n.PostBuild.exe" "$(ProjectDir)\web.config"
+```
+You can find i18n.PostBuild.exe file under packages folder: 
+
+``` 
+    {your_solution}\packages\{package_version}\tools\i18n.PostBuild\i18n.PostBuild.exe
 ```
     
 Alternatively, you may choose to install the `i18n.POTGenerator.vsix` Visual Studio extension (2012/2013).
@@ -501,6 +508,22 @@ URL localization can be disabled by setting the scheme to ```i18n.UrlLocalizatio
         i18n.UrlLocalizer.UrlLocalizationScheme = i18n.UrlLocalizationScheme.Void;
     }
 ```
+
+Without URL localization, i18n will rely on the cookie "i18n.langtag" to determine the current language for each request. This means that the language change/setting feature on your site should change the cookie and set the new PrincipalAppLanguage:
+
+```
+  HttpCookie c = new HttpCookie("i18n.langtag") { 
+    Value = Request.QueryString("newLanguage"), 
+    HttpOnly = true, 
+    Expires = DateTime.UtcNow.AddYears(1) 
+    };
+  Response.Cookies.Add(c);
+  i18n.ILanguageTag p = default(i18n.ILanguageTag);
+  p = i18n.LanguageTag.GetCachedInstance(Request.QueryString("newLanguage"));
+  i18n.HttpContextExtensions.SetPrincipalAppLanguageForRequest(this.Context, p);
+```
+
+If you are experiencing problems with static content, maybe also related to browser caching and are having trouble getting the rules for URL exclusion in the following paragraphs to work, the Void scheme might we worth looking into. Please see [Issue #385](https://github.com/turquoiseowl/i18n/issues/385).
 
 #### Exclude URLs from being localized
 
@@ -1020,11 +1043,6 @@ The following stock implementations of ```i18n.ITranslateSvc``` are provided by 
 - TranslateSvc_HttpContext - ITranslateSvc implementation based on an given HttpContext instance.
 - TranslateSvc_HttpContextCurrent - ITranslateSvc implementation based on the static HttpContext.Current instance (obtained at the time of calling the interface).
 
-### Build Notes
-
-The i18n project at present targets Visual Studio 2013 / .NET Framework 4 and requires the Visual Studio 2013 SDK libraries
-installed to build.
-
 ### Contributing
 
 There's lot of room for further enhancements and features to this library, and you are encouraged to fork it and
@@ -1034,6 +1052,13 @@ contribute back anything new. Specifically, these would be great places to add m
 * Input and ideas on a safe universal nugget syntax (see issue [#69](https://github.com/turquoiseowl/i18n/issues/69)).
 * Plurals support.
 * Help me fix the bugs! Chances are I don't ship in your language. Fix what hurts. Please?
+
+#### Coding Style Guidlines
+
+* Pull Requests that add functionality to be accompanied with documentation added to this README.
+* Pull Request to be as granular as possible (e.g. limited to single features/enhancements).
+* All methods to be commented including helper routine.
+* 4-spaces used for tab indent.
 
 #### Line Endings
 
@@ -1047,16 +1072,36 @@ This behaviour is controlled via Git's ```core.autocrlf``` setting, which in thi
 
 See [Dealing with line endings](https://help.github.com/articles/dealing-with-line-endings/) for more information.
 
-#### Contributing and Coding Style Guidlines
+#### Build Notes
 
-Contributions to the project are always welcome and even more so when adopting the following guidlines:
+The i18n project at present targets Visual Studio 2013 / .NET Framework 4 and requires the Visual Studio 2013 SDK libraries
+installed to build.
 
-* Pull Requests that add functionality to be accompanied with documentation added to this README.
-* Pull Request to be as granular as possible (e.g. limited to single features/enhancements).
-* All methods to be commented including helper routine.
-* 4-spaces used for tab indent.
+### Known Issues
+
+* MVC controller names must be more than 3 chars ([#370](https://github.com/turquoiseowl/i18n/issues/370)).
 
 ### Release History
+
+#### 2.1.15 (20190814)
+
+* FIX: "NullReferenceException caused by bad langtag ([#387](https://github.com/turquoiseowl/i18n/issues/387)).
+* FIX: "LangTag extraction logic broken by URL with query string immediately after lantag ([#383](https://github.com/turquoiseowl/i18n/issues/383)).
+
+#### 2.1.14 (20180710)
+
+* FIX: "Localization of outgoing URIs" feature issue in version 2.1.13 ([#374](https://github.com/turquoiseowl/i18n/issues/374)).
+
+#### 2.1.13 (20180707)
+
+* FIX: performance issues related to translations in the default application language ([#368](https://github.com/turquoiseowl/i18n/issues/368)).
+* FIX: URI fragments breaking localization of outgoing URIs ([#372](https://github.com/turquoiseowl/i18n/issues/372)).
+
+#### 2.1.11 (20180528)
+
+* Improved support for wildcards in BlackList and WhileList settings ([#319](https://github.com/turquoiseowl/i18n/issues/319)).
+* FIX: redundant updates to PO files ([#329](https://github.com/turquoiseowl/i18n/issues/329)).
+* Modifications to OWIN support ([#334](https://github.com/turquoiseowl/i18n/issues/334)) [BREAKING CHANGE].
 
 #### 2.1.10 (20161206)
 

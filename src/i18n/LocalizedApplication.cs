@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using System.Text.RegularExpressions;
-using i18n.Domain.Helpers;
 using i18n.Helpers;
 using i18n.Domain.Abstract;
 using i18n.Domain.Concrete;
@@ -119,10 +118,12 @@ namespace i18n
             }
             set
             {
-                DefaultLanguageTag = LanguageTag.GetCachedInstance(value);
+                LanguageTag defaultLanguageTag = LanguageTag.GetCachedInstance(value);
+                if (defaultLanguageTag != null) {
+                    DefaultLanguageTag = defaultLanguageTag; }
             }
         }
-        public LanguageTag DefaultLanguageTag { get; set; }
+        public LanguageTag DefaultLanguageTag { get; private set; }
 
         /// <summary>
         /// Specifies whether the key for a message may be assumed to be the value for

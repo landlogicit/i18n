@@ -111,7 +111,7 @@ namespace i18n
 
             Uri requestUrl = context != null ? context.Request.Url : null;
 
-            // Localize any HTTP headers in the response containing URLs.
+            // Localize urls in HTTP headers.
             if (context != null) {
                 foreach (string hdr in m_httpHeadersContainingUrls) {
                     string hdrval = context.Response.Headers[hdr];
@@ -124,7 +124,7 @@ namespace i18n
                 }
             }
             
-            // Localize any nuggets in the entity.
+            // Localize urls in the response body (entity).
             return m_regexHtmlUrls.Replace(
                 entity,
                 delegate(Match match)
@@ -157,7 +157,7 @@ namespace i18n
         /// Regex for finding and replacing urls in html.
         /// </summary>
         public static Regex m_regexHtmlUrls = new Regex(
-            "(?<pre><(?:script|img|a|area|link|base|input|frame|iframe|form)\\b.*?(?:src|href|action)\\s*=\\s*[\"']\\s*)(?<url>.+?)(?<post>\\s*[\"'][^>]*?>)",
+            "(?<pre><(?:script|img|a|area|link|base|input|frame|iframe|form)\\b[^>]*?\\b(?:src|href|action)\\s*=\\s*[\"']\\s*)(?<url>.+?)(?<post>\\s*[\"'][^>]*?>)",
             RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 // The above supports most common ways for a URI to appear in HTML/XHTML.
                 // Note that if we fail to catch a URL here, it is not fatal; it only means we don't avoid a redirect
@@ -224,6 +224,13 @@ namespace i18n
             if (m_urlLocalizer.ExtractLangTagFromUrl(context, url, UriKind.RelativeOrAbsolute, incomingUrl, out urlNonlocalized) != null) {
                 return null; } // original
 
+            // If URL is invalid...leave matched token alone.
+            // NB: Uri.IsWellFormedUriString has odd URI fragment handling: if a valid URI contains a fragment 
+            // then it returns false. Go figure!
+            if (!url.Contains("#")
+                && !Uri.IsWellFormedUriString(url, UriKind.RelativeOrAbsolute)) {
+                return null; } // original
+
             // If URL is not local (i.e. remote host)...leave matched token alone.
             if (requestUrl != null && !requestUrl.IsLocal(url)) {
                 return null; } // original
@@ -255,7 +262,8 @@ namespace i18n
                     // simply does a Uri.TryCreate (at least as of .NET 4.6.1).
                 if (urlIsUnrooted) {
                     Uri newUri = new Uri(requestUrl, url);
-                    url = newUri.PathAndQuery;
+                    url = newUri.PathAndQuery + newUri.Fragment;
+                        // NB: if there is no fragment then newUri.Fragment == ""
                 }
             }
 
